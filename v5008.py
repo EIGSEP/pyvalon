@@ -1,19 +1,20 @@
 #! /usr/bin/env python
 """
-usage: v5015.py [-h] [--dev DEV] [--baud BAUD] [--freq FREQ] [--amp AMP] [--ref REF] [--rfout RFOUT] [--pwr PWR] [--v]
+usage: v5008.py [-h] [--dev DEV] [--baud BAUD] [--synth {A,B}] [--freq FREQ] [--amp {-4,-1,2,5}] [--ref {external,internal}] [--status] [--flash]
 
-Usage for Setting V5015.
+Usage for Setting V5007/V5008.
 
 optional arguments:
-  -h, --help     show this help message and exit
-  --dev DEV      Serial port for V5015.
-  --baud BAUD    Baud rate.
-  --freq FREQ    The frequency in MHz.
-  --amp AMP      The amplitude in dBm.
-  --ref REF      The reference source('internal' or 'external' or 'status')
-  --rfout RFOUT  The rfout status('on' or 'off' or 'status')
-  --pwr PWR      The power status('on' or 'off' or 'status')
-  --v            Verbose
+  -h, --help            show this help message and exit
+  --dev DEV             Serial port for V5007/V5008.
+  --baud BAUD           Baud rate.
+  --synth {A,B}         A - synthesizer 1; B - synthesizer 2.
+  --freq FREQ           The frequency in MHz.
+  --amp {-4,-1,2,5}     The amplitude level.
+  --ref {external,internal}
+                        The reference source('internal' or 'external')
+  --status              Check the synthesizer status
+  --flash               Write the parameters into flash
 """
 from Valon import V500X
 from argparse import ArgumentParser
@@ -22,6 +23,8 @@ JUST_LEN = 12
 
 def CheckStatus(synth, s):
     print('%s: %s'%('synthesizer'.ljust(JUST_LEN), s))
+    label = synth.GetLabel(s)
+    print('%s: %s'%('Label'.ljust(JUST_LEN), label))
     freq = synth.GetFreq(s)
     print('%s: %.02f'%('Freq(MHz)'.ljust(JUST_LEN), freq))
     rf_level = synth.GetRFLevel(s)
@@ -30,7 +33,7 @@ def CheckStatus(synth, s):
     print('%s: %s'%('Reference'.ljust(JUST_LEN), ref))
     lock = synth.GetPhaseLock(s)
     if lock == True:
-        print('%s: %s'%('Lock'.ljust(JUST_LEN), 'Locked'))  
+        print('%s: %s'%('Lock'.ljust(JUST_LEN), 'Locked'))
     else:
         print('%s: %s'%('Lock'.ljust(JUST_LEN), 'Unlocked'))  
 
@@ -48,6 +51,7 @@ def main():
     parser.add_argument('--freq', dest='freq', type=float, help='The frequency in MHz.')
     parser.add_argument('--amp', dest='amp', type=int, choices=[-4, -1, 2, 5], default=-999, help='The amplitude level.')
     parser.add_argument('--ref',dest='ref',type=str, choices=['external', 'internal'], default='', help='The reference source(\'internal\' or \'external\')')
+    parser.add_argument('--label', dest='label', type=str, default=None, help='Set or get the synthesizer label (omit value to get)')
     parser.add_argument('--status', dest='status', default=False, action='store_true', help='Check the synthesizer status')
     parser.add_argument('--flash', dest='flash', default=False, action='store_true', help='Write the parameters into flash')
     args = parser.parse_args()
@@ -84,6 +88,20 @@ def main():
             else:
                 ref = synth.GetRefSelect()
                 print('%s: %s'%('Reference'.ljust(JUST_LEN), ref))
+    # set or get label
+    if args.label is not None:
+        s = GetSynth(args)
+        if args.label == '':
+            label = synth.GetLabel(s)
+            print('%s: %s'%('Label'.ljust(JUST_LEN), label))
+        else:
+            r = synth.SetLabel(s, args.label)
+            if r == False:
+                print('Label set failed.')
+            else:
+                label = synth.GetLabel(s)
+                print('%s: %s'%('synthesizer'.ljust(JUST_LEN), s))
+                print('%s: %s'%('Label'.ljust(JUST_LEN), label))
     if args.status:
         print('')
         CheckStatus(synth, 'A')

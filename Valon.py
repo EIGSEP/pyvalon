@@ -247,10 +247,8 @@ class V500X(object):
         return sum & 0xff
 
     def _verify_checksum(self, data, checksum):
-        if self._generate_checksum(data) == checksum:
-            return True
-        else:
-            return False
+        cs = checksum[0] if isinstance(checksum, (bytes, bytearray)) else checksum
+        return self._generate_checksum(data) == cs
 
     def CheckReadBack(self, b, l, c):
         """
@@ -264,7 +262,7 @@ class V500X(object):
         if len(b) != l or len(c) != 1:
             print("Read Back data incorrect: The length should be %d, while it's %d"%(l, len(b)))
             return False
-        if self._verify_checksum(b,c) == True:
+        if not self._verify_checksum(b, c):
             print('Checksum is incorrect.')
             return False
         return True
@@ -316,9 +314,24 @@ class V500X(object):
         freq = self._unpack_int(b, 0)
         return freq
     
-    def SetReference(self):
-        #TODO: not implemented
-        return NotImplemented
+    def SetReference(self, freq):
+        """
+        Description:
+            Set the reference frequency.
+        Inputs:
+            - freq (int): reference frequency in Hz.
+        Outputs:
+            - success (bool): True if ACK received.
+        """
+        data = struct.pack('>BI', 0x01, freq)
+        cs = self._generate_checksum(data)
+        self._write(data + bytes([cs]))
+        r = self._read(1)
+        r = struct.unpack('b', r)[0]
+        if r == V500X.REPLY['ACK']:
+            return True
+        else:
+            return False
 
     def GetOptions(self, synth):
         """
@@ -349,9 +362,51 @@ class V500X(object):
         opts['r'] = (reg2 >> 14) & 0x03ff;
         return opts
 
-    def SetOptions(self):
-        #TODO: not implemented
-        return NotImplemented
+    def SetOptions(self, synth, double=0, half=0, divider=1, low_spur=0):
+        """
+        Description:
+            Set the synthesizer's configuration options.
+        Inputs:
+            - synth (str): 'A' or 'B'.
+            - double (int): 1 to double reference frequency, 0 otherwise.
+            - half (int): 1 to halve reference frequency, 0 otherwise.
+            - divider (int): reference frequency divisor (1-1023).
+            - low_spur (int): 1 to minimize spurs, 0 to minimize phase noise.
+        Outputs:
+            - success (bool): True if ACK received.
+        """
+        try:
+            s = V500X.SYNTH[synth]
+        except:
+            print('synth is not supported.')
+            return False
+        # Read current registers
+        cmdbyte = bytearray(1)
+        cmdbyte[0] = 0x80 | s
+        self._write(cmdbyte)
+        b = self._read(24)
+        c = self._read(1)
+        if self.CheckReadBack(b, 24, c) == False:
+            return False
+        # Modify reg2
+        reg2 = self._unpack_int(b, 8)
+        reg2 &= 0x9c003fff
+        reg2 |= (((low_spur & 1) << 30) | ((low_spur & 1) << 29) |
+                 ((double & 1) << 25) | ((half & 1) << 24) |
+                 ((divider & 0x03ff) << 14))
+        # Write back
+        cmdbytes = bytearray(26)
+        cmdbytes[0] = 0x00 | s
+        cmdbytes[1:25] = b
+        self._pack_int(reg2, cmdbytes, 9)
+        cmdbytes[25] = self._generate_checksum(cmdbytes[:25])
+        self._write(cmdbytes)
+        r = self._read(1)
+        r = struct.unpack('b', r)[0]
+        if r == V500X.REPLY['ACK']:
+            return True
+        else:
+            return False
 
     def GetEPDF(self, synth, verbose=False):
         """
@@ -410,13 +465,86 @@ class V500X(object):
         vcor['max'] = self._unpack_short(b,2)
         return vcor
 
-    def SetVCORange(self):
-        # TODO: not implemented
-        return NotImplemented
+    def SetVCORange(self, synth, low, high):
+        """
+        Description:
+            Set the VCO range.
+        Inputs:
+            - synth (str): 'A' or 'B'.
+            - low (int): minimum VCO frequency in MHz.
+            - high (int): maximum VCO frequency in MHz.
+        Outputs:
+            - success (bool): True if ACK received.
+        """
+        try:
+            s = V500X.SYNTH[synth]
+        except:
+            print('synth is not supported.')
+            return False
+        data = struct.pack('>BHH', 0x03 | s, low, high)
+        cs = self._generate_checksum(data)
+        self._write(data + bytes([cs]))
+        r = self._read(1)
+        r = struct.unpack('b', r)[0]
+        if r == V500X.REPLY['ACK']:
+            return True
+        else:
+            return False
+
+    def GetLabel(self, synth):
+        """
+        Description:
+            Get synthesizer label or name.
+        Inputs:
+            - synth (str): 'A' or 'B'.
+        Outputs:
+            - label (str): up to 16 characters.
+        """
+        try:
+            s = V500X.SYNTH[synth]
+        except:
+            print('synth is not supported.')
+            return
+        cmdbytes = bytearray(1)
+        cmdbytes[0] = 0x82 | s
+        self._write(cmdbytes)
+        b = self._read(16)
+        c = self._read(1)
+        if self.CheckReadBack(b, 16, c) == False:
+            return
+        return b.rstrip(b'\x00').decode('utf-8', errors='replace')
+
+    def SetLabel(self, synth, label):
+        """
+        Description:
+            Set synthesizer label or name.
+        Inputs:
+            - synth (str): 'A' or 'B'.
+            - label (str): up to 16 characters.
+        Outputs:
+            - success (bool): True if ACK received.
+        """
+        try:
+            s = V500X.SYNTH[synth]
+        except:
+            print('synth is not supported.')
+            return False
+        if isinstance(label, str):
+            label = label.encode('utf-8')
+        label = label[:16].ljust(16, b'\x00')
+        data = struct.pack('>B', 0x02 | s) + label
+        cs = self._generate_checksum(data)
+        self._write(data + bytes([cs]))
+        r = self._read(1)
+        r = struct.unpack('b', r)[0]
+        if r == V500X.REPLY['ACK']:
+            return True
+        else:
+            return False
 
     def GetFreq(self, synth, verbose=False):
         """
-        Description: 
+        Description:
             Get the frequency.
         Inputs:
             - synth (str): A - synthesizer 1; B - synthesizer 2.
@@ -505,7 +633,7 @@ class V500X(object):
         cmdbytes[0] = 0x00|s
         cmdbytes[1:25] = b
         self._pack_freq_registers(regs, cmdbytes, 1)
-        cmdbytes[25] = self._generate_checksum(cmdbytes[1:25])
+        cmdbytes[25] = self._generate_checksum(cmdbytes[:25])
         self._write(cmdbytes)
         r = self._read(1)
         r = struct.unpack('b', r)[0]
@@ -589,7 +717,7 @@ class V500X(object):
         cmdbytes[0] = 0x00|s
         cmdbytes[1:25] = b
         self._pack_int(reg4, cmdbytes, 17)
-        cmdbytes[25] = self._generate_checksum(b)
+        cmdbytes[25] = self._generate_checksum(cmdbytes[:25])
         self._write(cmdbytes)
         r = self._read(1)
         r = struct.unpack('b', r)[0]

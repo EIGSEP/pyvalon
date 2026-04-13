@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "pyvalon"
+version = "0.1.0"
+description = "Python library for controlling Valon Synthesizer devices (V5015, V5007, V5008)"
+requires-python = ">=3.8"
+dependencies = ["pyserial"]
+
+[project.scripts]
+v5015 = "v5015:main"
+v5008 = "v5008:main"

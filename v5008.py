@@ -21,6 +21,13 @@ from argparse import ArgumentParser
 
 JUST_LEN = 12
 
+# EIGSEP default configuration
+EIGSEP_DEFAULTS = {
+    'A': {'freq': 500.0, 'amp': 5},
+    'B': {'freq': 250.0, 'amp': 5},
+    'ref': 'external',
+}
+
 def CheckStatus(synth, s):
     print('%s: %s'%('synthesizer'.ljust(JUST_LEN), s))
     label = synth.GetLabel(s)
@@ -59,13 +66,44 @@ def main():
     print('%s: %s'%('Dev'.ljust(JUST_LEN),args.dev))
     print('%s: %s'%('Baud'.ljust(JUST_LEN),args.baud))
 
-    synth = V500X(args.dev, args.baud)    
+    synth = V500X(args.dev, args.baud)
+
+    # If no configuration arguments provided, apply EIGSEP defaults
+    no_config = (args.freq is None and args.amp == -999 and args.ref == ''
+                 and args.label is None and not args.status and not args.flash)
+    if no_config:
+        print('\nApplying EIGSEP defaults...')
+        # Set external reference
+        r = synth.SetRefSelect(EIGSEP_DEFAULTS['ref'])
+        if not r:
+            print('Reference set failed.')
+        else:
+            print('%s: %s'%('Reference'.ljust(JUST_LEN), synth.GetRefSelect()))
+        # Configure both synthesizers
+        for s in ('A', 'B'):
+            cfg = EIGSEP_DEFAULTS[s]
+            r = synth.SetFreq(s, cfg['freq'])
+            if not r:
+                print('Frequency set failed for synth %s.' % s)
+            r = synth.SetRFLevel(s, cfg['amp'])
+            if not r:
+                print('RF level set failed for synth %s.' % s)
+        # Flash and show status
+        synth.Flash()
+        print('')
+        CheckStatus(synth, 'A')
+        print('')
+        CheckStatus(synth, 'B')
+        print('\nSettings flashed.')
+        synth.close()
+        return
+
     # set freq
-    if args.freq :
+    if args.freq:
         s = GetSynth(args)
         r = synth.SetFreq(s, args.freq)
         if r == False:
-            print('Frequency set faild.')
+            print('Frequency set failed.')
         else:
             freq = synth.GetFreq(s)
             print('%s: %s'%('synthesizer'.ljust(JUST_LEN), s))
@@ -75,7 +113,7 @@ def main():
         s = GetSynth(args)
         r = synth.SetRFLevel(s, args.amp)
         if r == False:
-            print('Amp set faild.')
+            print('RF level set failed.')
         else:
             rf_level = synth.GetRFLevel(s)
             print('%s: %s'%('synthesizer'.ljust(JUST_LEN), s))
@@ -84,7 +122,7 @@ def main():
     if args.ref != '':
             r = synth.SetRefSelect(args.ref)
             if r == False:
-                print('Reference set faild.')
+                print('Reference set failed.')
             else:
                 ref = synth.GetRefSelect()
                 print('%s: %s'%('Reference'.ljust(JUST_LEN), ref))

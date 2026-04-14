@@ -380,6 +380,12 @@ class V500X(object):
         except:
             print('synth is not supported.')
             return False
+        if not (1 <= divider <= 1023):
+            print('divider must be in range 1..1023.')
+            return False
+        double = 1 if double else 0
+        half = 1 if half else 0
+        low_spur = 1 if low_spur else 0
         # Read current registers
         cmdbyte = bytearray(1)
         cmdbyte[0] = 0x80 | s
@@ -391,9 +397,9 @@ class V500X(object):
         # Modify reg2
         reg2 = self._unpack_int(b, 8)
         reg2 &= 0x9c003fff
-        reg2 |= (((low_spur & 1) << 30) | ((low_spur & 1) << 29) |
-                 ((double & 1) << 25) | ((half & 1) << 24) |
-                 ((divider & 0x03ff) << 14))
+        reg2 |= ((low_spur << 30) | (low_spur << 29) |
+                 (double << 25) | (half << 24) |
+                 (divider << 14))
         # Write back
         cmdbytes = bytearray(26)
         cmdbytes[0] = 0x00 | s

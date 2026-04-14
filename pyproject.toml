@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=61.0"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyvalon"
@@ -12,3 +12,6 @@ dependencies = ["pyserial"]
 [project.scripts]
 v5015 = "v5015:main"
 v5008 = "v5008:main"
+
+[tool.setuptools]
+py-modules = ["Valon", "v5008", "v5015"]

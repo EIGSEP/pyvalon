@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 """
-usage: v5008.py [-h] [--dev DEV] [--baud BAUD] [--synth {A,B}] [--freq FREQ] [--amp {-4,-1,2,5}] [--ref {external,internal}] [--status] [--flash]
+usage: v5008.py [-h] [--dev DEV] [--baud BAUD] [--synth {A,B}] [--freq FREQ] [--amp {-4,-1,2,5}] [--ref {external,internal}] [--status] [--flash] [--eigsep]
 
 Usage for Setting V5007/V5008.
 
@@ -15,6 +15,7 @@ optional arguments:
                         The reference source('internal' or 'external')
   --status              Check the synthesizer status
   --flash               Write the parameters into flash
+  --eigsep              Apply EIGSEP default configuration
 """
 from Valon import V500X
 from argparse import ArgumentParser
@@ -61,6 +62,7 @@ def main():
     parser.add_argument('--label', dest='label', type=str, default=None, help='Set or get the synthesizer label (omit value to get)')
     parser.add_argument('--status', dest='status', default=False, action='store_true', help='Check the synthesizer status')
     parser.add_argument('--flash', dest='flash', default=False, action='store_true', help='Write the parameters into flash')
+    parser.add_argument('--eigsep', dest='eigsep', default=False, action='store_true', help='Apply EIGSEP default configuration (A=500 MHz, B=250 MHz, external ref, 5 dBm, flash)')
     args = parser.parse_args()
     
     print('%s: %s'%('Dev'.ljust(JUST_LEN),args.dev))
@@ -68,10 +70,7 @@ def main():
 
     synth = V500X(args.dev, args.baud)
 
-    # If no configuration arguments provided, apply EIGSEP defaults
-    no_config = (args.freq is None and args.amp == -999 and args.ref == ''
-                 and args.label is None and not args.status and not args.flash)
-    if no_config:
+    if args.eigsep:
         print('\nApplying EIGSEP defaults...')
         # Set external reference
         r = synth.SetRefSelect(EIGSEP_DEFAULTS['ref'])

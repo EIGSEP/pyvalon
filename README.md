@@ -1,60 +1,86 @@
-# PyValon
-The software is used for Valon Synthesizer configuration.  
-It supports V5015, V5007 and V5008 so far.  
-The code for V5007 and V5008 refers to the code [here](https://github.com/nrao/ValonSynth), but it's totally written in Python.  
-You can use this software to configure the output frequency, output power and set the reference clock.  
-# Getting start
-1. Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html)(optional)  
-Miniconda is recommended to create a vritual python environment, so that it won't mess up the python environment on your system.  
-If miniconda is installed, please create and activate the python environment.
-    ```
-    conda create -n valon python=3.12
-    conda activate valon
-    ```
-    **Note:** All Python3.x should work.
-2. Install necessary packages
-    ```
-    pip install pyserial
-    ```
-3. clone the repository
-    ```
-    git clone https://github.com/liuweiseu/pyvalon.git
-    ```
-4. use the `v5015.py` or `v5008.py` to configure your Valon Synthesizer.
-* V5015 configuration
-    ```
-    $ ./v5015.py -h
-    usage: v5015.py [-h] [--dev DEV] [--baud BAUD] [--freq FREQ] [--amp AMP] [--ref REF] [--rfout RFOUT] [--pwr PWR] [--v]
+# pyvalon
 
-    Usage for Setting V5015.
+Python library for configuring Valon Synthesizer devices.
+Supports V5015, V5007, and V5008. The V5007/V5008 protocol implementation
+is a Python port of [ValonSynth](https://github.com/nrao/ValonSynth).
 
-    options:
-    -h, --help     show this help message and exit
-    --dev DEV      Serial port for V5015.
-    --baud BAUD    Baud rate.
-    --freq FREQ    The frequency in MHz.
-    --amp AMP      The amplitude in dBm.
-    --ref REF      The reference source('internal' or 'external' or 'status')
-    --rfout RFOUT  The rfout status('on' or 'off' or 'status')
-    --pwr PWR      The power status('on' or 'off' or 'status')
-    --v            Verbose
-    ```
-* V5007/V5008 configuration
-    ```
-    $ ./v5008.py -h
-    usage: v5008.py [-h] [--dev DEV] [--baud BAUD] [--synth {A,B}] [--freq FREQ] [--amp {-4,-1,2,5}] [--ref {external,internal}] [--status] [--flash]
+This repo is shipped as part of the
+[eigsep-field](https://github.com/EIGSEP/eigsep-field) release and pinned
+in its `manifest.toml`.
 
-    Usage for Setting V5007/V5008.
+## Install
 
-    options:
-    -h, --help            show this help message and exit
-    --dev DEV             Serial port for V5007/V5008.
-    --baud BAUD           Baud rate.
-    --synth {A,B}         A - synthesizer 1; B - synthesizer 2.
-    --freq FREQ           The frequency in MHz.
-    --amp {-4,-1,2,5}     The amplitude level.
-    --ref {external,internal}
-                            The reference source('internal' or 'external')
-    --status              Check the synthesizer status
-    --flash               Write the parameters into flash
-    ```
+```
+pip install pyvalon
+```
+
+Or from a checkout, for development:
+
+```
+git clone https://github.com/EIGSEP/pyvalon
+cd pyvalon
+pip install -e .[dev]
+```
+
+## Python API
+
+```python
+from pyvalon import V5008
+
+synth = V5008("/dev/ttyUSB0", baud=9600)
+synth.SetRefSelect("external")
+synth.SetFreq("A", 500.0)      # MHz
+synth.SetRFLevel("A", 5)       # dBm
+synth.Flash()                  # persist to NVM
+synth.close()
+```
+
+`V5007` and `V5015` have analogous interfaces.
+
+## Command-line tools
+
+Installing the package puts two console scripts on your `PATH`.
+
+### V5007 / V5008 — `v5008`
+
+```
+v5008 [--dev DEV] [--baud BAUD] [--synth {A,B}] [--freq FREQ]
+      [--amp {-4,-1,2,5}] [--ref {external,internal}] [--label [LABEL]]
+      [--status] [--flash] [--eigsep]
+```
+
+### V5015 — `v5015`
+
+```
+v5015 [--dev DEV] [--baud BAUD] [--freq FREQ] [--amp AMP] [--ref REF]
+      [--rfout RFOUT] [--pwr PWR] [--v]
+```
+
+Run either with `-h` for full argument help.
+
+## EIGSEP defaults
+
+The V5008 CLI ships with an `--eigsep` shortcut that applies the
+experiment's standard configuration in one shot: external reference,
+synth A at 500 MHz, synth B at 250 MHz, 5 dBm output on both, then
+flashes to non-volatile memory:
+
+```
+v5008 --dev /dev/ttyUSB0 --eigsep
+```
+
+The defaults live in `EIGSEP_DEFAULTS` at the top of `pyvalon.v5008` —
+edit there if the field configuration changes.
+
+## Development
+
+```
+pip install -e .[dev]
+pytest
+```
+
+Releases are managed by
+[release-please](https://github.com/googleapis/release-please): merging
+conventional-commit PRs to `master` opens a release PR that bumps the
+version in `pyproject.toml` and `.release-please-manifest.json`, and
+publishes to PyPI once merged.

@@ -2,6 +2,24 @@ __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
 
+# Distribution / packaging
 build/
 dist/
 *.egg-info/
+*.egg
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+junit.xml
+htmlcov/
+
+# Ruff
+.ruff_cache/
+
+# Environments
+.env
+.venv
+venv/

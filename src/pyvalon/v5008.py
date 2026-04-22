@@ -18,7 +18,7 @@ optional arguments:
   --flash               Write the parameters into flash
   --eigsep              Apply EIGSEP default configuration
 """
-from Valon import V500X
+from pyvalon.valon import V500X
 from argparse import ArgumentParser
 
 JUST_LEN = 12

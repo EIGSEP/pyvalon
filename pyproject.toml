@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyvalon"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python library for controlling Valon Synthesizer devices (V5015, V5007, V5008)"
 readme = "README.md"
 license = {text = "MIT"}

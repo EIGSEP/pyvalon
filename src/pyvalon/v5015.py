@@ -15,7 +15,7 @@ optional arguments:
   --pwr PWR      The power status('on' or 'off' or 'status')
   --v            Verbose
 """
-from Valon import V5015
+from pyvalon.valon import V5015
 from argparse import ArgumentParser
 
 JUST_LEN = 8

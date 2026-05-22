@@ -43,9 +43,7 @@ class FakeSerial:
 @pytest.fixture
 def fake_v500x(monkeypatch):
     fake = FakeSerial()
-    monkeypatch.setattr(
-        valon_mod.serial, "Serial", lambda *a, **kw: fake
-    )
+    monkeypatch.setattr(valon_mod.serial, "Serial", lambda *a, **kw: fake)
     synth = V500X("/dev/null", 9600)
     return synth, fake
 

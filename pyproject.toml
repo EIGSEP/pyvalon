@@ -20,8 +20,6 @@ dependencies = ["pyserial"]
 
 [project.optional-dependencies]
 dev = [
-  "build",
-  "twine",
   "ruff",
   "pytest",
   "pytest-cov",
